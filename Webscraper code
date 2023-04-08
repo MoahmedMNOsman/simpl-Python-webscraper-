@@ -1,0 +1,59 @@
+import csv
+import time
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+
+# set the base URL of the eBay page to scrape
+base_url = '#enter here your link'
+
+# set up the Chrome web driver
+options = webdriver.ChromeOptions()
+options.add_argument('--headless')  # run Chrome in headless mode (without GUI)
+driver = webdriver.Chrome(options=options)
+
+# set the number of pages to scrape
+num_pages = 4
+
+# loop through each page of search results
+titles = []
+for i in range(1, num_pages + 1):
+    url = base_url.format(i)
+    
+    # navigate to the eBay search results page
+    driver.get(url)
+
+    # wait for the page to load
+    wait = WebDriverWait(driver, 10)
+    wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'div.s-item__info')))
+
+    # scroll down to the bottom of the page to load more results
+    while True:
+        prev_height = driver.execute_script('return document.body.scrollHeight;')
+        driver.execute_script('window.scrollTo(0, document.body.scrollHeight);')
+        time.sleep(2)  # wait for the page to load
+        new_height = driver.execute_script('return document.body.scrollHeight;')
+        if new_height == prev_height:
+            break
+
+    # find all the product titles containing "3D Printed" and its variations in the page content
+    for item in driver.find_elements(By.CSS_SELECTOR, 'span[role="heading"]'):
+        if '3D Printed' in item.text or '3D printed' in item.text or '3D print' in item.text or '3dp' in item.text or '3D Print' in item.text or '3d Print' in item.text or '3d printed' in item.text:
+            titles.append(item.text.strip())
+
+# save the results in a CSV file
+with open('product_titles.csv', mode='w', newline='') as file:
+    writer = csv.writer(file)
+    writer.writerow(['Product Titles'])
+    for title in titles:
+        writer.writerow([title])
+
+if len(titles) > 0:
+    print(f"{len(titles)} product titles containing '3D Printed' or its variations scraped and saved to product_titles.csv")
+else:
+    print("0 product titles containing '3D Printed' or its variations scraped and saved to product_titles.csv")
+
+# close the Chrome web driver
+driver.quit()
